@@ -1,12 +1,14 @@
 import mlflow
 import mlflow.xgboost
 import pandas as pd
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-import shap
-from sklearn.metrics import roc_auc_score, recall_score, precision_score, f1_score, confusion_matrix
+from sklearn.metrics import (roc_auc_score, recall_score,
+                             precision_score, f1_score,
+                             confusion_matrix)
 
 with mlflow.start_run(nested=True, run_name="model_evaluation"):
     X_test = pd.read_parquet("data/X_test_final.parquet")
@@ -26,11 +28,36 @@ with mlflow.start_run(nested=True, run_name="model_evaluation"):
 
     print("Loading model from run ID:", run_id)
 
-    # Load model
-    model = mlflow.xgboost.load_model(f"runs:/{run_id}/xgboost_model")
+    # Load as booster directly to avoid version issues
+    import xgboost as xgb
+    import mlflow.artifacts
+    import os
+    import tempfile
 
-    # Predictions
-    preds_prob = model.predict_proba(X_test)[:, 1]
+    # Load model using xgboost booster directly
+    model_uri = f"runs:/{run_id}/xgboost_model"
+    
+    try:
+        # Try loading as pyfunc first
+        pyfunc_model = mlflow.pyfunc.load_model(model_uri)
+        
+        # Get predictions using booster
+        local_path = mlflow.artifacts.download_artifacts(model_uri)
+        booster = xgb.Booster()
+        booster.load_model(os.path.join(local_path, "model.xgb"))
+        
+        dtest = xgb.DMatrix(X_test)
+        preds_prob = booster.predict(dtest)
+        
+    except Exception as e:
+        print(f"Booster load failed: {e}, trying sklearn interface...")
+        # Fallback: load sklearn model
+        model = mlflow.xgboost.load_model(model_uri)
+        # Use decision function instead of predict_proba
+        dtest = xgb.DMatrix(X_test)
+        booster = model.get_booster()
+        preds_prob = booster.predict(dtest)
+
     preds = (preds_prob > 0.4).astype(int)
 
     # Metrics
@@ -51,7 +78,7 @@ with mlflow.start_run(nested=True, run_name="model_evaluation"):
     cm = confusion_matrix(y_test, preds)
     plt.figure(figsize=(6, 4))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-    plt.title('Confusion Matrix')
+    plt.title('Confusion Matrix - Fraud Detection')
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
     plt.tight_layout()
@@ -59,29 +86,25 @@ with mlflow.start_run(nested=True, run_name="model_evaluation"):
     mlflow.log_artifact("confusion_matrix.png")
     plt.close()
 
-    # SHAP - FIX: extract booster from XGBoost model
+    # SHAP
     try:
+        import shap
         print("Generating SHAP values...")
-        
-        # Fix: get the raw booster object
-        booster = model.get_booster()
-        
-        # Use booster directly with SHAP
         explainer = shap.TreeExplainer(booster)
-        sample = X_test.iloc[:500]
+        sample = X_test.iloc[:300]
+        dmatrix_sample = xgb.DMatrix(sample)
         shap_values = explainer.shap_values(sample)
 
+        plt.figure()
         shap.summary_plot(shap_values, sample, show=False)
         plt.tight_layout()
         plt.savefig("shap_summary.png")
         mlflow.log_artifact("shap_summary.png")
         plt.close()
-
         print("SHAP completed successfully")
 
     except Exception as e:
-        print("SHAP failed with error:", str(e))
-        print("Skipping SHAP - continuing pipeline")
+        print(f"SHAP skipped: {e}")
 
     print("Evaluation Completed")
     print("=" * 60)

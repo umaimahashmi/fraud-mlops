@@ -46,6 +46,10 @@ with mlflow.start_run(run_name="xgboost_training"):
     
     mlflow.log_metrics(metrics)
     mlflow.xgboost.log_model(model, "xgboost_model")
+
+    # Save booster in binary format for compatibility
+    model.get_booster().save_model("models/model.xgb")
+    mlflow.log_artifact("models/model.xgb")
     
     # Feature Importance
     importance = pd.Series(model.feature_importances_, index=X_train.columns).sort_values(ascending=False)
