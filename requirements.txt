@@ -1,4 +1,4 @@
-mlflow>=2.10
+mlflow>=2.12
 pandas
 numpy
 scikit-learn
@@ -9,10 +9,12 @@ category-encoders
 shap
 evidently
 fastapi
-uvicorn
+uvicorn[standard]
 prometheus-fastapi-instrumentator
 prometheus-client
 joblib
 pyyaml
 matplotlib
 seaborn
+pytest
+flake8
