@@ -1,0 +1,24 @@
+name: Fraud MLOps CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  repository_dispatch:
+    types: [retrain]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    - run: pip install -r requirements.txt
+    - name: Run Full Pipeline
+      env:
+        MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+      run: python pipeline/run_pipeline.py
+    - name: Deploy Inference
+      run: echo "Deploying to Kubernetes / Cloud Run..."

@@ -1,0 +1,22 @@
+artifact_path: file:C:/Users/UmaimaHashmi/Desktop/ASS/mlruns/0/models/m-5d2294eed3184f139ceae6b6dec47907/artifacts
+flavors:
+  python_function:
+    data: model.ubj
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.13.0
+  xgboost:
+    code: null
+    data: model.ubj
+    model_class: xgboost.sklearn.XGBClassifier
+    model_format: ubj
+    xgb_version: 3.2.0
+mlflow_version: 3.10.0
+model_id: m-5d2294eed3184f139ceae6b6dec47907
+model_size_bytes: 252199
+model_uuid: m-5d2294eed3184f139ceae6b6dec47907
+prompts: null
+run_id: e80c5302df844334ba815b95a1c889eb
+utc_time_created: '2026-05-07 03:08:11.419767'

@@ -1,0 +1,8 @@
+python pipeline/run_pipeline.py
+
+
+# 2. Install MLflow again (this often fixes the issue)
+pip install mlflow
+
+# 3. Run MLflow using Python module (this always works)
+python -m mlflow ui
